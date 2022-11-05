@@ -1,0 +1,1 @@
+web: gunicorn buyzu.wsgi 

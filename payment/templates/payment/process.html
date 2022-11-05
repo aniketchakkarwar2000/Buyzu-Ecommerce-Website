@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://js.braintreegateway.com/web/dropin/1.18.0/js/dropin.min.js"></script>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <style>
+      
+      
+   
+
+    </style>
+    
+    <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script> -->
+    <title>Payment</title>
+    <!-- includes the Braintree JS client SDK -->
+
+    <!-- <script src="https://js.braintreegateway.com/web/3.44.2/js/client.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.44.2/js/hosted-fields.min.js"></script> -->
+
+    <!-- includes jQuery -->
+  </head>
+  <body>
+    
+
+
+    
+    
+    <div class="container main">
+      <div class="page-header mt-3">
+        <h1 class="m-3">Pay your order </h1>
+      </div>
+    
+      <div id="error-box" class="alert alert-danger " style="display: none;" role="alert"></div>
+      <div id="success-box" class="alert alert-success " style="display: none;" role="alert"></div>
+      
+      <form action="" method="post" id='myNonce' >
+        
+        <input type="hidden" id="nonce" name="payment_method_nonce" value="">
+        {% csrf_token %}
+        <div id="dropin-container"></div>
+        <button  class="btn btn-lg btn-primary m-3" id="submit-button">Pay {{order.get_total_cost}}</button>
+
+        
+      </form>
+      
+    
+      
+    </div>
+    
+    <script src="https://js.braintreegateway.com/web/dropin/1.29.0/js/dropin.min.js"></script>
+  
+
+    
+    
+
+   
+
+
+
+
+
+    <!-- Option 1: Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" crossorigin="anonymous"></script>
+
+    
+    <script>
+
+      // var csrftoken = $.cookie("csrftoken");
+      // console.log(document.cookie) 
+      // var s = $("input#nonce").val('sss');  
+      // console.log($("input#nonce").val())  
+      const csrftoken = document.cookie.split("=")[1];
+
+      var button = document.querySelector('#submit-button');
+      var $errBox = $('#error-box');
+      var $successBox = $('#success-box');
+
+      function displayMessage(box, message) {
+        box.html(message);
+        box.css("display", "block");
+        
+      }
+
+      function clearMessage(box) {
+        box.html('');
+        box.css("display", "none");
+      }
+
+      braintree.dropin.create({
+        authorization: '{{ client_token|safe }}',
+        selector: '#dropin-container',
+        paypal: {
+          flow: 'checkout',
+          amount: '{{order.get_total_cost}}',
+          currency: 'USD'
+        },
+        googlePay: {
+          googlePayVersion: 2,
+          merchantId: '12345678901234567890',
+          transactionInfo: {
+            totalPriceStatus: 'FINAL',
+            totalPrice: '{{order.get_total_cost}}',
+            currencyCode: 'INR'
+          },
+          allowedPaymentMethods: [{
+            type: 'CARD',
+            parameters: {
+              // We recommend collecting and passing billing address information with all Google Pay transactions as a best practice.
+              billingAddressRequired: true,
+              billingAddressParameters: {
+                format: 'FULL'
+              }
+            }
+          }]
+        },
+
+       
+      }, function (createErr, instance) {
+        if (createErr) {
+          displayMessage($errBox, createErr.message);
+          return;
+        }
+        button.addEventListener('click', function () {
+          clearMessage($errBox);
+          clearMessage($successBox);
+          
+          instance.requestPaymentMethod(function (requestPaymentMethodErr, payload) {
+            if (requestPaymentMethodErr) {
+              displayMessage($errBox, requestPaymentMethodErr.message);
+              return;
+            }
+            var s = $("input#nonce").val(payload.nonce);  
+            
+            $('#myNonce').submit();
+            // console.log($("input#nonce").val())
+            data = {
+              'nonce':`${payload.nonce}`,
+              "csrfmiddlewaretoken" : `${csrftoken}`,
+            }
+            // $.ajax({
+            //     url: '/nonce/',
+            //     type: 'post',
+            //     dataType: 'json',
+            //     data: data,
+            //     success: function(data) {
+            //       console.log(data);
+            //               // ... do something with the data...
+            //               displayMessage($successBox, 'Send Payment Method Nonce (' + payload.nonce + ') to your server.');
+            //             }
+            // });
+            // displayMessage($successBox, 'Send Payment Method Nonce (' + payload.nonce + ') to your server.');
+          });
+        });
+      });
+
+
+
+
+
+
+
+
+
+      
+        // var form = document.querySelector('#payment');
+        // var submit = document.querySelector('input[type="submit"]');
+        // console.log(braintree.client);
+ 
+        // braintree.client.create({
+        //     authorization: '{{ client_token }}'},
+        //     function (clientErr, clientInstance) {
+        //     if (clientErr) {
+        //         console.error(clientErr);
+        //         return;
+        //     }
+        //     braintree.hostedFields.create({
+        //         client: clientInstance,
+        //         styles: {
+        //             'input': {'font-size': '14px'},
+        //             'input.invalid': {'color': 'red'},
+        //             'input.valid': {'color': 'green'}
+        //         },
+        //         fields: {
+        //             number: { selector: '#card-number',
+        //                       placeholder: '4111 1111 1111 1111',
+        //                       class:'form-control'
+                      
+        //                     },
+        //             cvv: {selector: '#cvv',placeholder: '123'},
+        //             expirationDate: {selector: '#expiration-date',placeholder: '10/2022'}
+        //         }
+        //         }, function (hostedFieldsErr, hostedFieldsInstance) {
+        //         if (hostedFieldsErr) {
+        //             console.error(hostedFieldsErr);
+        //             return;
+        //         }
+        //     submit.removeAttribute('disabled');
+        //     form.addEventListener('submit', function (event) {
+        //     event.preventDefault();
+        //     hostedFieldsInstance.tokenize(function (tokenizeErr,
+        //     payload) {
+        //     if (tokenizeErr) {
+        //         console.error(tokenizeErr);
+        //         return;
+        //     }
+        //     // set nonce to send to the server
+        //     document.getElementById('nonce').value = payload.nonce;
+        //     // submit form
+        //     document.getElementById('payment').submit();
+        //     });
+        //     }, false);
+        //     });
+        // });
+
+
+
+
+
+
+
+    </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+    
+    
+    
+  </body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
